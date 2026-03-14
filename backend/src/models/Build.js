@@ -4,15 +4,39 @@
 // Fn 4.5 — Virtuals
 const mongoose = require('mongoose')
 
+const slotSchema = new mongoose.Schema({ rank: Number }, { _id: false })
+
 const armorPieceSchema = new mongoose.Schema({
   mhwId:   Number,
   name:    String,
+  type:    String,   // head | chest | gloves | waist | legs
+  rank:    String,   // low | high | master
+  rarity:  Number,
   defense: { base: Number, max: Number, augmented: Number },
   resistances: {
     fire: Number, water: Number, thunder: Number,
     ice: Number, dragon: Number,
   },
-  skills: [{ skillName: String, level: Number }],
+  slots:  [slotSchema],
+  skills: [{ skillName: String, level: Number, _id: false }],
+}, { _id: false })
+
+const weaponElementSchema = new mongoose.Schema(
+  { type: String, damage: Number, hidden: Boolean },
+  { _id: false }
+)
+
+const weaponSchema = new mongoose.Schema({
+  mhwId:      Number,
+  name:       String,
+  weaponType: String,   // great-sword, bow, … (stored as weaponType to avoid Mongoose type-key clash)
+  rarity:     Number,
+  attack:     { display: Number, raw: Number },
+  damageType: String,
+  elderseal:  String,
+  elements:   [weaponElementSchema],
+  slots:      [slotSchema],
+  attributes: { affinity: Number },
 }, { _id: false })
 
 const buildSchema = new mongoose.Schema(
@@ -32,10 +56,7 @@ const buildSchema = new mongoose.Schema(
       enum: ['aggressive', 'defensive', 'balanced', 'support'],
       default: 'balanced',
     },
-    weapon: {
-      mhwId: Number, name: String, type: String,
-      attack: Number, rarity: Number,
-    },
+    weapon: weaponSchema,
     helm:   armorPieceSchema,
     chest:  armorPieceSchema,
     gloves: armorPieceSchema,
@@ -67,10 +88,9 @@ buildSchema.virtual('totalDefense').get(function () {
 })
 
 // Fn 4.2 — Soft delete query interceptor (exclude deleted by default)
-buildSchema.pre(/^find/, function (next) {
-  if (this.getOptions()?.includeDeleted) return next()
+buildSchema.pre(/^find/, function () {
+  if (this.getOptions()?.includeDeleted) return
   this.where({ isDeleted: false })
-  next()
 })
 
 // Fn 4.2 — Instance method: Soft delete

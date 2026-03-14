@@ -408,10 +408,38 @@ function Step2() {
     (armorBySlot[slot] || []).find(a => a.id === armorIds[slot]) ?? null
   )
 
+  // Map mhw-db API objects to backend schema shape
+  const mapWeapon = (w) => !w ? null : ({
+    mhwId:      w.id,
+    name:       w.name,
+    weaponType: w.type,   // renamed to avoid Mongoose type-key clash
+    rarity:     w.rarity,
+    attack:     { display: w.attack?.display ?? 0, raw: w.attack?.raw ?? 0 },
+    damageType: w.damageType ?? null,
+    elderseal:  w.elderseal  ?? null,
+    elements:   (w.elements || []).map(({ type, damage, hidden }) => ({ type, damage, hidden: !!hidden })),
+    slots:      (w.slots    || []).map(s => ({ rank: s.rank })),
+    attributes: { affinity: w.attributes?.affinity ?? 0 },
+  })
+
+  const mapArmor = (a) => !a ? null : ({
+    mhwId:       a.id,
+    name:        a.name,
+    type:        a.type,
+    rank:        a.rank,
+    rarity:      a.rarity,
+    defense:     { base: a.defense?.base ?? 0, max: a.defense?.max ?? 0, augmented: a.defense?.augmented ?? 0 },
+    resistances: { fire: a.resistances?.fire ?? 0, water: a.resistances?.water ?? 0,
+                   thunder: a.resistances?.thunder ?? 0, ice: a.resistances?.ice ?? 0,
+                   dragon: a.resistances?.dragon ?? 0 },
+    slots:       (a.slots  || []).map(s => ({ rank: s.rank })),
+    skills:      (a.skills || []).map(s => ({ skillName: s.skillName, level: s.level })),
+  })
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!weaponId) { setGearError('Please select a weapon'); return }
-    const selectedWeapon = weapons.find(w => w.id === weaponId)
+    const [helmArmor, chestArmor, glovesArmor, waistArmor, legsArmor] = selectedArmorPieces
     const ok = await nextStep({
       weaponId,
       weaponName: selectedWeapon?.name || '',
@@ -420,6 +448,13 @@ function Step2() {
       glovesId: armorIds.gloves ?? null,
       waistId:  armorIds.waist  ?? null,
       legsId:   armorIds.legs   ?? null,
+      // Full objects for backend persistence
+      weapon: mapWeapon(selectedWeapon),
+      helm:   mapArmor(helmArmor),
+      chest:  mapArmor(chestArmor),
+      gloves: mapArmor(glovesArmor),
+      waist:  mapArmor(waistArmor),
+      legs:   mapArmor(legsArmor),
     })
     if (!ok) setGearError('Please check your selections')
   }

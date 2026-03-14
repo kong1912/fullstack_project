@@ -32,6 +32,9 @@ const INITIAL_DATA = {
   weaponId: 0, weaponName: '',
   helmId: null, chestId: null, glovesId: null, waistId: null, legsId: null,
   notes: '',
+  // Full gear objects (populated in Step 2, sent to backend)
+  weapon: null,
+  helm: null, chest: null, gloves: null, waist: null, legs: null,
 }
 
 const STORAGE_KEY = 'mhw-multistep-draft'
@@ -60,8 +63,10 @@ export function MultiStepProvider({ children, onSubmit }) {
 
   const nextStep = useCallback(async (fields) => {
     try {
-      const parsed = await stepSchemas[step].parseAsync({ ...data, ...fields })
-      updateData(parsed)
+      const merged = { ...data, ...fields }
+      // Validate only the declared schema fields; extra fields (full gear objects) pass through
+      await stepSchemas[step].parseAsync(merged)
+      updateData(merged)
       setErrors({})
       setStep((s) => s + 1)
       return true
@@ -84,7 +89,7 @@ export function MultiStepProvider({ children, onSubmit }) {
 
   const submit = useCallback(async (fields = {}) => {
     const finalData = { ...data, ...fields }
-    if (onSubmit) await onSubmit(finalData)
+    if (onSubmit) await onSubmit(finalData)  // throws on error → reset not called
     reset()
   }, [data, onSubmit, reset])
 
