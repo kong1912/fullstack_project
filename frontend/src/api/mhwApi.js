@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 const MHW_BASE = 'https://mhw-db.com'
-const mhwAxios = axios.create({ baseURL: MHW_BASE, timeout: 8000 })
+const mhwAxios = axios.create({ baseURL: MHW_BASE, timeout: 20000 })
 
 // --- Monsters ---
 export const fetchMonsters   = (params = {}) => mhwAxios.get('/monsters', { params })
