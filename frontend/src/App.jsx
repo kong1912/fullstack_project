@@ -16,6 +16,8 @@ import Register     from './pages/Register'
 import Admin        from './pages/Admin'
 import Profile      from './pages/Profile'
 import NotFound     from './pages/NotFound'
+import Guides       from './pages/Guides'
+import GuideDetail  from './pages/GuideDetail'
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
               <Route path="/monsters/:id" element={<MonsterDetail />} />
               <Route path="/weapons"       element={<Weapons />} />
               <Route path="/weapons/:id"  element={<WeaponDetail />} />
+              <Route path="/guides"       element={<Guides />} />
+              <Route path="/guides/:id"   element={<GuideDetail />} />
               <Route path="/login"         element={<Login />} />
               <Route path="/register"      element={<Register />} />
               {/* Protected — logged-in users */}

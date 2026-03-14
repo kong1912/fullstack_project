@@ -10,7 +10,7 @@ const commentSchema = new mongoose.Schema(
     },
     // Target can be a build, monster ID, or weapon ID
     targetType: {
-      type: String, enum: ['build', 'monster', 'weapon'], required: true,
+      type: String, enum: ['build', 'monster', 'weapon', 'guide'], required: true,
     },
     targetId: { type: String, required: true, index: true },
 
@@ -31,7 +31,10 @@ const commentSchema = new mongoose.Schema(
     isDeleted: { type: Boolean, default: false },
     deletedAt: Date,
 
-    upvotes: { type: Number, default: 0 },
+    upvotes:   { type: Number, default: 0 },
+    downvotes: { type: Number, default: 0 },
+    upvotedBy:   [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
   {
     timestamps: true,

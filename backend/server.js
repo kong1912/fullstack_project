@@ -33,6 +33,8 @@ app.use('/api/monsters',  require('./src/routes/monsterRoutes'))
 app.use('/api/weapons',   require('./src/routes/weaponRoutes'))
 app.use('/api/builds',    require('./src/routes/buildRoutes'))
 app.use('/api/stats',     require('./src/routes/statsRoutes'))
+app.use('/api/guides',    require('./src/routes/guideRoutes'))
+app.use('/api/comments',  require('./src/routes/commentRoutes'))
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }))
