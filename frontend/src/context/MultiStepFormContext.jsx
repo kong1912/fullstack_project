@@ -6,21 +6,22 @@ const MultiStepContext = createContext(null)
 
 // Step schemas for Zod validation (Fn 6.3)
 export const stepSchemas = [
+  // Step 0 — Basic info
   z.object({
     name:  z.string().min(3, 'Build name must be at least 3 characters'),
     style: z.enum(['aggressive', 'defensive', 'balanced', 'support']),
   }),
+  // Step 1 — Weapon + Armor (combined)
   z.object({
-    weaponId:   z.string().min(1, 'Select a weapon'),
-    weaponType: z.string().min(1, 'Weapon type is required'),
+    weaponId:   z.number().int().min(1, 'Select a weapon'),
+    weaponName: z.string().optional(),
+    helmId:     z.number().int().min(1).nullable().optional(),
+    chestId:    z.number().int().min(1).nullable().optional(),
+    glovesId:   z.number().int().min(1).nullable().optional(),
+    waistId:    z.number().int().min(1).nullable().optional(),
+    legsId:     z.number().int().min(1).nullable().optional(),
   }),
-  z.object({
-    helmId:   z.string().optional(),
-    chestId:  z.string().optional(),
-    glovesId: z.string().optional(),
-    waistId:  z.string().optional(),
-    legsId:   z.string().optional(),
-  }),
+  // Step 2 — Finalize
   z.object({
     notes: z.string().max(500, 'Notes max 500 characters').optional(),
   }),
@@ -28,9 +29,12 @@ export const stepSchemas = [
 
 const INITIAL_DATA = {
   name: '', style: 'balanced',
-  weaponId: '', weaponType: '',
-  helmId: '', chestId: '', glovesId: '', waistId: '', legsId: '',
+  weaponId: 0, weaponName: '',
+  helmId: null, chestId: null, glovesId: null, waistId: null, legsId: null,
   notes: '',
+  // Full gear objects (populated in Step 2, sent to backend)
+  weapon: null,
+  helm: null, chest: null, gloves: null, waist: null, legs: null,
 }
 
 const STORAGE_KEY = 'mhw-multistep-draft'
@@ -59,8 +63,10 @@ export function MultiStepProvider({ children, onSubmit }) {
 
   const nextStep = useCallback(async (fields) => {
     try {
-      const parsed = await stepSchemas[step].parseAsync({ ...data, ...fields })
-      updateData(parsed)
+      const merged = { ...data, ...fields }
+      // Validate only the declared schema fields; extra fields (full gear objects) pass through
+      await stepSchemas[step].parseAsync(merged)
+      updateData(merged)
       setErrors({})
       setStep((s) => s + 1)
       return true
@@ -81,8 +87,9 @@ export function MultiStepProvider({ children, onSubmit }) {
     localStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  const submit = useCallback(async () => {
-    if (onSubmit) await onSubmit(data)
+  const submit = useCallback(async (fields = {}) => {
+    const finalData = { ...data, ...fields }
+    if (onSubmit) await onSubmit(finalData)  // throws on error → reset not called
     reset()
   }, [data, onSubmit, reset])
 
