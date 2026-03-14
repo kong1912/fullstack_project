@@ -12,6 +12,10 @@ const getGuides = asyncHandler(async (req, res) => {
   if (req.query.tags) {
     query.tags = { $all: req.query.tags.split(',').map(t => t.trim()) }
   }
+  if (req.query.search) {
+    const re = new RegExp(req.query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    query.$or = [{ title: re }, { body: re }]
+  }
 
   const [guides, total] = await Promise.all([
     Guide.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)

@@ -4,7 +4,6 @@ import { createGuide } from '../../api/guideApi'
 export default function GuideForm({ onCreated }) {
   const [title,       setTitle]       = useState('')
   const [body,        setBody]        = useState('')
-  const [tags,        setTags]        = useState('')
   const [submitting,  setSubmitting]  = useState(false)
   const [error,       setError]       = useState(null)
   const [open,        setOpen]        = useState(false)
@@ -14,10 +13,9 @@ export default function GuideForm({ onCreated }) {
     setError(null)
     setSubmitting(true)
     try {
-      const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean)
-      const { data } = await createGuide({ title: title.trim(), body: body.trim(), tags: parsedTags })
+      const { data } = await createGuide({ title: title.trim(), body: body.trim() })
       onCreated?.(data.guide)
-      setTitle(''); setBody(''); setTags(''); setOpen(false)
+      setTitle(''); setBody(''); setOpen(false)
     } catch (err) {
       setError(err.response?.data?.message ?? err.message)
     } finally { setSubmitting(false) }
@@ -46,10 +44,6 @@ export default function GuideForm({ onCreated }) {
       <textarea value={body} onChange={e => setBody(e.target.value)} required rows={6}
         placeholder="Write your guide here…"
         className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-mhw-accent resize-y" />
-
-      <input value={tags} onChange={e => setTags(e.target.value)}
-        placeholder="Tags (comma separated, e.g. great-sword, endgame)"
-        className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-mhw-accent" />
 
       {error && <p className="text-xs text-mhw-accent">⚠ {error}</p>}
 

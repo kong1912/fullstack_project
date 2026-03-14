@@ -17,7 +17,14 @@ function VotePanel({ guide, onVoted }) {
     if (!isAuthenticated) return
     try {
       const { data } = await voteGuide(guide._id, v)
-      onVoted(data.guide)
+      const uid = String(user._id)
+      const upvotedBy   = data.userVote === 'up'
+        ? [...(guide.upvotedBy ?? []).filter(id => String(id) !== uid), uid]
+        : (guide.upvotedBy ?? []).filter(id => String(id) !== uid)
+      const downvotedBy = data.userVote === 'down'
+        ? [...(guide.downvotedBy ?? []).filter(id => String(id) !== uid), uid]
+        : (guide.downvotedBy ?? []).filter(id => String(id) !== uid)
+      onVoted({ ...guide, upvotes: data.upvotes, downvotes: data.downvotes, upvotedBy, downvotedBy })
     } catch {}
   }
 
@@ -52,7 +59,6 @@ export default function GuideDetail() {
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editBody,  setEditBody]  = useState('')
-  const [editTags,  setEditTags]  = useState('')
   const [saving,   setSaving]   = useState(false)
 
   useEffect(() => {
@@ -70,15 +76,13 @@ export default function GuideDetail() {
   const startEdit = () => {
     setEditTitle(guide.title)
     setEditBody(guide.body)
-    setEditTags((guide.tags ?? []).join(', '))
     setEditing(true)
   }
 
   const saveEdit = async () => {
     setSaving(true)
     try {
-      const tags = editTags.split(',').map(t => t.trim()).filter(Boolean)
-      const { data } = await updateGuide(id, { title: editTitle, body: editBody, tags })
+      const { data } = await updateGuide(id, { title: editTitle, body: editBody })
       setGuide(data.guide)
       setEditing(false)
     } catch (e) {
@@ -120,9 +124,6 @@ export default function GuideDetail() {
             <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
               rows={10}
               className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm resize-y focus:outline-none focus:border-mhw-accent" />
-            <input value={editTags} onChange={e => setEditTags(e.target.value)}
-              placeholder="Tags (comma separated)"
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-mhw-accent" />
             {error && <p className="text-xs text-mhw-accent">{error}</p>}
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={saving}
@@ -156,15 +157,6 @@ export default function GuideDetail() {
               <span>·</span>
               <span>{dateStr}</span>
             </div>
-
-            {/* Tags */}
-            {guide.tags?.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {guide.tags.map(t => (
-                  <span key={t} className="px-2 py-0.5 bg-mhw-card text-mhw-gold text-xs rounded-full border border-mhw-gold/30">{t}</span>
-                ))}
-              </div>
-            )}
 
             {/* Body */}
             <div className="prose prose-invert max-w-none text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">

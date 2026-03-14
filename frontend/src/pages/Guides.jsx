@@ -11,27 +11,26 @@ export default function Guides() {
   const [total,   setTotal]   = useState(0)
   const [page,    setPage]    = useState(1)
   const [loading, setLoading] = useState(false)
-  const [tagInput, setTagInput] = useState('')
-  const [tagFilter, setTagFilter] = useState([])
+  const [searchInput, setSearchInput] = useState('')
+  const [search,      setSearch]      = useState('')
 
-  const load = useCallback(async (p = 1, tags = tagFilter) => {
+  const load = useCallback(async (p = 1, q = search) => {
     setLoading(true)
     try {
       const params = { page: p, limit: 10 }
-      if (tags.length) params.tags = tags.join(',')
+      if (q.trim()) params.search = q.trim()
       const { data } = await fetchGuides(params)
       setGuides(prev => p === 1 ? data.guides : [...prev, ...data.guides])
       setTotal(data.pagination.total)
       setPage(p)
     } finally { setLoading(false) }
-  }, [tagFilter])
+  }, [search])
 
   useEffect(() => { load(1) }, [load])
 
-  const handleTagFilter = (e) => {
+  const handleSearch = (e) => {
     e.preventDefault()
-    const tags = tagInput.split(',').map(t => t.trim()).filter(Boolean)
-    setTagFilter(tags)
+    setSearch(searchInput.trim())
   }
 
   const handleCreated = (guide) => {
@@ -55,28 +54,28 @@ export default function Guides() {
         {isAuthenticated && <GuideForm onCreated={handleCreated} />}
       </div>
 
-      {/* Tag filter */}
-      <form onSubmit={handleTagFilter} className="flex gap-2">
-        <input value={tagInput} onChange={e => setTagInput(e.target.value)}
-          placeholder="Filter by tags (comma separated)…"
-          className="flex-1 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-mhw-accent" />
+      {/* Search */}
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
+          <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
+            placeholder="Search guide topics…"
+            className="w-full pl-8 pr-3 py-2 bg-white/5 border border-white/20 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-mhw-gold" />
+        </div>
         <button className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition-colors border border-white/20">
-          Filter
+          Search
         </button>
-        {tagFilter.length > 0 && (
-          <button type="button" onClick={() => { setTagFilter([]); setTagInput('') }}
-            className="px-3 py-2 text-gray-400 hover:text-white text-sm transition-colors">
-            Clear
+        {search && (
+          <button type="button" onClick={() => { setSearch(''); setSearchInput('') }}
+            className="px-2 py-2 text-gray-400 hover:text-white text-sm transition-colors">
+            ✕
           </button>
         )}
       </form>
 
-      {/* Active tag pills */}
-      {tagFilter.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {tagFilter.map(t => (
-            <span key={t} className="px-2 py-0.5 bg-mhw-accent/20 text-mhw-accent rounded-full text-xs">{t}</span>
-          ))}
+      {search && (
+        <div className="flex flex-wrap gap-1 items-center">
+          <span className="px-2 py-0.5 bg-mhw-gold/20 text-mhw-gold rounded-full text-xs">🔍 {search}</span>
         </div>
       )}
 
