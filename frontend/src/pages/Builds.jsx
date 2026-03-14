@@ -2,7 +2,6 @@
 import { useEffect } from 'react'
 import useBuildStore from '../store/buildStore'
 import BuildCard from '../components/builds/BuildCard'
-import BuildSimulator from '../components/builds/BuildSimulator'
 import { MultiStepProvider } from '../context/MultiStepFormContext'
 import MultiStepForm from '../components/forms/MultiStepForm'
 import LoadingSpinner from '../components/common/LoadingSpinner'
@@ -22,20 +21,12 @@ export default function Builds() {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       <h1 className="text-3xl font-extrabold text-mhw-gold">My Builds</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Quick simulator (Fn 2.4) */}
-        <div>
-          <h2 className="text-xl font-bold text-white mb-4">Quick Simulator</h2>
-          <BuildSimulator />
-        </div>
-
-        {/* Multi-step build creator (Fn 6.3) */}
-        <div>
-          <h2 className="text-xl font-bold text-white mb-4">Build Wizard</h2>
-          <MultiStepProvider onSubmit={handleMultiStepSubmit}>
-            <MultiStepForm />
-          </MultiStepProvider>
-        </div>
+      {/* Build Wizard (Fn 6.3) */}
+      <div>
+        <h2 className="text-xl font-bold text-white mb-4">Build Wizard</h2>
+        <MultiStepProvider onSubmit={handleMultiStepSubmit}>
+          <MultiStepForm />
+        </MultiStepProvider>
       </div>
 
       {/* Saved builds */}
@@ -58,3 +49,4 @@ export default function Builds() {
     </div>
   )
 }
+
