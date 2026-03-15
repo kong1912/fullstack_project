@@ -19,9 +19,13 @@ export default function Guides() {
     try {
       const params = { page: p, limit: 10 }
       if (q.trim()) params.search = q.trim()
-      const { data } = await fetchGuides(params)
-      setGuides(prev => p === 1 ? data.guides : [...prev, ...data.guides])
-      setTotal(data.pagination.total)
+      const res = await fetchGuides(params)
+      // normalize response: new endpoint returns { data: [...], metadata: { totalItems,... } }
+      const payload = res.data || {}
+      const items = payload.data ?? payload.guides ?? []
+      const totalItems = payload.metadata?.totalItems ?? payload.pagination?.total ?? 0
+      setGuides(prev => p === 1 ? items : [...prev, ...items])
+      setTotal(totalItems)
       setPage(p)
     } finally { setLoading(false) }
   }, [search])

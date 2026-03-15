@@ -6,6 +6,7 @@ export default function GuideForm({ onCreated }) {
   const [title,       setTitle]       = useState('')
   const [body,        setBody]        = useState('')
   const [files,       setFiles]       = useState([])
+  const [tagsText,    setTagsText]    = useState('')
   const [submitting,  setSubmitting]  = useState(false)
   const [error,       setError]       = useState(null)
   const [open,        setOpen]        = useState(false)
@@ -20,7 +21,9 @@ export default function GuideForm({ onCreated }) {
     setError(null)
     setSubmitting(true)
     try {
-      const { data } = await createGuide({ title: title.trim(), body: body.trim() })
+      // parse tags from comma-separated input into array
+      const tags = tagsText.split(',').map(t => t.trim()).filter(Boolean)
+      const { data } = await createGuide({ title: title.trim(), body: body.trim(), tags })
       if (files.length) {
         // Close the form panel, show floating popup instead
         setCreatedGuide(data.guide)
@@ -93,6 +96,14 @@ export default function GuideForm({ onCreated }) {
       <textarea value={body} onChange={e => setBody(e.target.value)} required rows={6}
         placeholder="Write your guide here…"
         className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-mhw-accent resize-y" />
+
+      {/* Tags input */}
+      <div>
+        <label className="text-xs text-gray-400 font-medium">Tags (comma separated)</label>
+        <input value={tagsText} onChange={e => setTagsText(e.target.value)}
+          placeholder="e.g. node,express,builds"
+          className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-mhw-accent" />
+      </div>
 
       {/* Image upload */}
       <div className="space-y-1">

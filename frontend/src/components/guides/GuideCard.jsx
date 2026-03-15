@@ -36,6 +36,15 @@ export default function GuideCard({ guide: init, onDeleted }) {
 
       <p className="text-sm text-gray-400 line-clamp-3">{guide.body}</p>
 
+      {/* Tags */}
+      {Array.isArray(guide.tags) && guide.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {guide.tags.map((t) => (
+            <span key={t} className="text-xs bg-white/5 text-gray-300 px-2 py-0.5 rounded-full">{t}</span>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-gray-500">
         <span>by <span className="text-gray-300">{guide.author?.username ?? '?'}</span></span>
         <div className="flex items-center gap-2">

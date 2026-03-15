@@ -27,6 +27,10 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 const cookieParser = require('cookie-parser')
 app.use(cookieParser())
 
+// Fn 3.3 — Circuit Breaker: per-IP rate limit (max 5 req / 10 s, no external lib)
+const ipRateLimit = require('./src/middleware/ipRateLimit')
+// Apply IP rate limit only to the /health route below (don't register globally)
+
 // Serve uploaded guide images
 const path = require('path')
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
@@ -39,9 +43,20 @@ app.use('/api/builds',    require('./src/routes/buildRoutes'))
 app.use('/api/stats',     require('./src/routes/statsRoutes'))
 app.use('/api/guides',    require('./src/routes/guideRoutes'))
 app.use('/api/comments',  require('./src/routes/commentRoutes'))
+app.use('/api/vault',     require('./src/routes/vaultRoutes'))
+app.use('/api/users',     require('./src/routes/userRoutes'))
 
-// Health check
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }))
+// Fn 3.2 — Interactive real-time health monitoring (C1-C5)
+// GET /health — system metrics via Node.js built-in os/process modules
+app.get('/health', ipRateLimit, (_req, res) => {
+  const mem = process.memoryUsage()
+  res.status(200).json({
+    status: 'ok',
+    uptime:           Math.floor(process.uptime()),          // C2: real-time, grows each refresh
+    memory_usage_mb:  Math.round(mem.rss / 1024 / 1024 * 10) / 10, // C3: Bytes → MB
+    timestamp:        new Date().toISOString(),               // C4: ISO 8601 with T and Z
+  })
+})
 
 // Fn 3.1 — Identity Scanner: reads req.query.token, returns 200/401 JSON
 app.get('/scan', (req, res) => {

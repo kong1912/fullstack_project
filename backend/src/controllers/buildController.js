@@ -18,6 +18,12 @@ const getBuilds = asyncHandler(async (req, res) => {
     query.tags = { $all: tags }
   }
 
+  // Filter by weapon raw attack via query param: ?minRaw=100 or ?minAtkRaw=100
+  if (req.query.minRaw || req.query.minAtkRaw) {
+    const minRaw = Number(req.query.minRaw ?? req.query.minAtkRaw)
+    if (!Number.isNaN(minRaw)) query['weapon.attack.raw'] = { $gte: minRaw }
+  }
+
   const [builds, total] = await Promise.all([
     Build.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
          .populate('owner', 'username'),
@@ -44,8 +50,17 @@ const getBuild = asyncHandler(async (req, res) => {
 
 // @POST /api/builds
 const createBuild = asyncHandler(async (req, res) => {
-  const build = await Build.create({ ...req.body, owner: req.user._id })
-  res.status(201).json({ success: true, build })
+  try {
+    const build = await Build.create({ ...req.body, owner: req.user._id })
+    return res.status(201).json({ success: true, build })
+  } catch (err) {
+    // Duplicate key (unique) error from MongoDB
+    if (err && err.code === 11000) {
+      res.status(400)
+      throw new Error('Duplicate build name for this user')
+    }
+    throw err
+  }
 })
 
 // @PUT /api/builds/:id

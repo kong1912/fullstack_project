@@ -26,6 +26,30 @@ const getGuides = asyncHandler(async (req, res) => {
   res.json({ success: true, guides, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
 })
 
+// GET /api/guides/search?tags=node,express&page=1&limit=5
+const searchGuides = asyncHandler(async (req, res) => {
+  const page  = Math.max(Number(req.query.page  ?? 1), 1)
+  const limit = Math.min(Number(req.query.limit ?? 5), 50)
+  const skip  = (page - 1) * limit
+
+  const query = {}
+  if (req.query.tags) {
+    // Parse comma-separated tags into array and require all tags to be present
+    const tags = req.query.tags.split(',').map(t => t.trim()).filter(Boolean)
+    if (tags.length > 0) query.tags = { $all: tags }
+  }
+
+  const [guides, total] = await Promise.all([
+    Guide.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+         .populate('author', 'username'),
+    Guide.countDocuments(query),
+  ])
+
+  const totalPages = Math.ceil(total / limit) || 0
+  // Per checklist: return 200 with data array (possibly empty) and metadata
+  res.json({ success: true, data: guides, metadata: { page, limit, totalItems: total, totalPages } })
+})
+
 // GET /api/guides/:id
 const getGuide = asyncHandler(async (req, res) => {
   const guide = await Guide.findById(req.params.id).populate('author', 'username')
@@ -106,4 +130,4 @@ const uploadGuideImages = asyncHandler(async (req, res) => {
   res.json({ success: true, newImages: dataUrls, images: guide.images })
 })
 
-module.exports = { getGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide, uploadGuideImages }
+module.exports = { getGuides, searchGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide, uploadGuideImages }
