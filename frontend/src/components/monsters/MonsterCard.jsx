@@ -21,7 +21,6 @@ export default function MonsterCard({ monster }) {
           <h3 className="font-bold text-white text-lg leading-tight">{name}</h3>
           <span className="text-xs text-gray-400 capitalize">{type}</span>
         </div>
-        <span className="text-2xl">🐲</span>
       </div>
 
       {/* Elements */}
