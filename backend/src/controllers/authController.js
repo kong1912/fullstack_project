@@ -11,7 +11,8 @@ const rateLimit           = require('express-rate-limit')
 // Fn 5.5 — Brute-force guard (exported for use in router)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
-  max:      10,
+  // C1: limit brute-force attempts by IP. Allow 5 attempts, block thereafter.
+  max:      5,
   message:  { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders:   false,
@@ -46,7 +47,12 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body
 
+  // Artificial delay to slow brute-force scripts (C2)
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  const DELAY_MS = 2000
+
   if (!email || !password) {
+    await sleep(DELAY_MS)
     res.statusCode = 400
     throw new Error('Email and password required')
   }
@@ -54,6 +60,7 @@ const login = asyncHandler(async (req, res) => {
   // Fn 5.2 — Must explicitly select password (select: false in schema)
   const user = await User.findOne({ email }).select('+password')
   if (!user) {
+    await sleep(DELAY_MS)
     res.statusCode = 401
     throw new Error('Invalid credentials')
   }
@@ -61,17 +68,22 @@ const login = asyncHandler(async (req, res) => {
   // Fn 5.2 — Safe comparison via bcrypt
   const match = await user.matchPassword(password)
   if (!match) {
+    await sleep(DELAY_MS)
     res.statusCode = 401
     throw new Error('Invalid credentials')
   }
 
   if (!user.isActive) {
+    await sleep(DELAY_MS)
     res.statusCode = 403
     throw new Error('Account is deactivated')
   }
 
   user.lastLogin = new Date()
   await user.save({ validateBeforeSave: false })
+
+  // Delay before responding (both success and failure) to mitigate rapid automated retries
+  await sleep(DELAY_MS)
 
   generateTokenAndCookie(res, user._id)
 
