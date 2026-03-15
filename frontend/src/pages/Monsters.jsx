@@ -14,26 +14,26 @@ export default function Monsters() {
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setError(null)
-    fetchMonsters()
-      .then(({ data }) => {
-        if (!cancelled) {
-          setMonsters(data)
-          setIsLoading(false)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err.message)
-          setIsLoading(false)
-        }
-      })
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const { data } = await fetchMonsters()
+        if (!cancelled) setMonsters(data)
+      } catch (err) {
+        if (!cancelled) setError(err.message)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    fetchData()
     return () => { cancelled = true }
   }, [])
 
+  const term = debouncedSearch.toLowerCase()
   const filtered = monsters.filter((m) =>
-    m.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+    m.name.toLowerCase().includes(term) ||
+    (m.species ?? '').toLowerCase().includes(term)
   )
 
   return (
@@ -68,7 +68,7 @@ export default function Monsters() {
 
       {!isLoading && filtered.length === 0 && (
         <div className="text-center py-16 text-gray-500">
-          No monsters found matching "{debouncedSearch}"
+          No results found for '{debouncedSearch}'
         </div>
       )}
     </div>

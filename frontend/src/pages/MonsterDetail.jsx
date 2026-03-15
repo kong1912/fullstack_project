@@ -42,7 +42,6 @@ export default function MonsterDetail() {
             <h1 className="text-3xl font-extrabold text-mhw-gold">{monster.name}</h1>
             <p className="text-gray-400 capitalize mt-1">{monster.type} · Species: {monster.species}</p>
           </div>
-          <span className="text-5xl">🐲</span>
         </div>
         {monster.description && (
           <p className="text-gray-300 mt-4 text-sm leading-relaxed">{monster.description}</p>
