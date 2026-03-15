@@ -16,13 +16,22 @@ export default function BuildCard({ build }) {
             <span className="text-xs text-gray-400 capitalize">{style} style</span>
           )}
         </Link>
-        <button
-          onClick={() => deleteBuild(_id)}
-          className="text-gray-500 hover:text-mhw-accent transition-colors text-sm"
-          title="Delete build"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Pending / queued badge for optimistic items */}
+          {build.__optimistic && (
+            <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full">Pending</span>
+          )}
+          {build.__queued && (
+            <span className="text-xs bg-orange-600 text-white px-2 py-0.5 rounded-full">Queued</span>
+          )}
+          <button
+            onClick={() => deleteBuild(_id)}
+            className="text-gray-500 hover:text-mhw-accent transition-colors text-sm"
+            title="Delete build"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {weapon && (

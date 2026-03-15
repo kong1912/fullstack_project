@@ -33,6 +33,9 @@ axiosInstance.interceptors.response.use(
     if (config._retryCount < MAX_RETRIES) {
       config._retryCount += 1
       const delay = Math.pow(2, config._retryCount) * 300 // exponential back-off
+        // Observable retry log for test visibility
+        // eslint-disable-next-line no-console
+        console.log(`Axios retrying request ${config.url} (attempt ${config._retryCount})`)
       await new Promise((res) => setTimeout(res, delay))
       return axiosInstance(config)
     }
