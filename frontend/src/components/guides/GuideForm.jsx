@@ -13,6 +13,8 @@ export default function GuideForm({ onCreated }) {
   const [phase,        setPhase]       = useState('form')
   const [createdGuide, setCreatedGuide] = useState(null)
 
+  const [minimized, setMinimized] = useState(false)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
@@ -20,9 +22,10 @@ export default function GuideForm({ onCreated }) {
     try {
       const { data } = await createGuide({ title: title.trim(), body: body.trim() })
       if (files.length) {
-        // Hand off to ImageUploadQueue — don't call onCreated yet
+        // Close the form panel, show floating popup instead
         setCreatedGuide(data.guide)
         setPhase('uploading')
+        setOpen(false)
       } else {
         onCreated?.(data.guide)
         setTitle(''); setBody(''); setFiles([]); setOpen(false)
@@ -36,39 +39,52 @@ export default function GuideForm({ onCreated }) {
     onCreated?.({ ...createdGuide, images: allImages })
     setTitle(''); setBody(''); setFiles([])
     setPhase('form'); setCreatedGuide(null)
-    setOpen(false)
+    setMinimized(false)
   }
 
-  if (!open) return (
-    <button onClick={() => setOpen(true)}
-      className="px-4 py-2 bg-mhw-accent hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors">
-      + New Guide
-    </button>
-  )
-
-  // Phase: uploading — guide created, now queue images
-  if (phase === 'uploading' && createdGuide) return (
-    <div className="bg-white/5 border border-mhw-gold/30 rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-mhw-gold">Uploading Images…</h3>
-        <span className="text-xs text-gray-500">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-      </div>
-      <ImageUploadQueue
-        guideId={createdGuide._id}
-        files={files}
-        onAllDone={handleUploadsComplete}
-      />
-    </div>
-  )
-
   return (
-    <form onSubmit={handleSubmit}
-      className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-mhw-gold">Write a Guide</h3>
-        <button type="button" onClick={() => setOpen(false)}
-          className="text-gray-500 hover:text-white text-sm">✕</button>
-      </div>
+    <>
+      {/* Floating upload progress popup */}
+      {phase === 'uploading' && createdGuide && (
+        <div className={`fixed bottom-6 right-6 z-50 w-80 bg-mhw-panel border border-mhw-gold/40 rounded-2xl shadow-2xl shadow-black/60 transition-all duration-300 ${minimized ? 'h-12 overflow-hidden' : ''}`}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer select-none"
+            onClick={() => setMinimized(m => !m)}>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-mhw-gold animate-pulse" />
+              <span className="text-sm font-bold text-mhw-gold">Uploading Images</span>
+              <span className="text-xs text-gray-500">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+            </div>
+            <span className="text-gray-400 text-xs">{minimized ? '▲' : '▼'}</span>
+          </div>
+          {!minimized && (
+            <div className="p-4">
+              <ImageUploadQueue
+                guideId={createdGuide._id}
+                files={files}
+                onAllDone={handleUploadsComplete}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* New Guide button */}
+      {!open && phase !== 'uploading' && (
+        <button onClick={() => setOpen(true)}
+          className="px-4 py-2 bg-mhw-accent hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors">
+          + New Guide
+        </button>
+      )}
+
+      {/* Write form */}
+      {open && (
+        <form onSubmit={handleSubmit}
+          className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-mhw-gold">Write a Guide</h3>
+            <button type="button" onClick={() => setOpen(false)}
+              className="text-gray-500 hover:text-white text-sm">✕</button>
+          </div>
 
       <input value={title} onChange={e => setTitle(e.target.value)} required
         placeholder="Title (min 5 characters)"
@@ -104,5 +120,7 @@ export default function GuideForm({ onCreated }) {
         </button>
       </div>
     </form>
+      )}
+    </>
   )
 }
