@@ -27,6 +27,10 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 const cookieParser = require('cookie-parser')
 app.use(cookieParser())
 
+// Serve uploaded guide images
+const path = require('path')
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
 // ── Routes ─────────────────────────────────────────────────────────────────────
 app.use('/api/auth',      require('./src/routes/authRoutes'))
 app.use('/api/monsters',  require('./src/routes/monsterRoutes'))

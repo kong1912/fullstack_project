@@ -1,7 +1,8 @@
 const router  = require('express').Router()
 const protect = require('../middleware/auth')
+const upload  = require('../middleware/upload')
 const {
-  getGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide,
+  getGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide, uploadGuideImages,
 } = require('../controllers/guideController')
 
 // Public read
@@ -14,5 +15,6 @@ router.post('/',          createGuide)
 router.put('/:id',        updateGuide)
 router.delete('/:id',     deleteGuide)
 router.post('/:id/vote',  voteGuide)
+router.post('/:id/images', upload.array('images', 5), uploadGuideImages)
 
 module.exports = router

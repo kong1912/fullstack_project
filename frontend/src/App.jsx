@@ -18,6 +18,7 @@ import Profile      from './pages/Profile'
 import NotFound     from './pages/NotFound'
 import Guides       from './pages/Guides'
 import GuideDetail  from './pages/GuideDetail'
+import Orchestrator from './pages/Orchestrator'
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
               <Route path="/weapons/:id"  element={<WeaponDetail />} />
               <Route path="/guides"       element={<Guides />} />
               <Route path="/guides/:id"   element={<GuideDetail />} />
+              <Route path="/orchestrator" element={<Orchestrator />} />
               <Route path="/login"         element={<Login />} />
               <Route path="/register"      element={<Register />} />
               {/* Protected — logged-in users */}

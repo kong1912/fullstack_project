@@ -36,7 +36,8 @@ export default function Navbar() {
           <div className="flex items-center gap-1">
             <NavLink to="/monsters" className={navLinkClass}>Monsters</NavLink>
             <NavLink to="/weapons"  className={navLinkClass}>Weapons</NavLink>
-            <NavLink to="/guides"   className={navLinkClass}>Guides</NavLink>
+            <NavLink to="/guides"        className={navLinkClass}>Guides</NavLink>
+            <NavLink to="/orchestrator"  className={navLinkClass}>Tasks</NavLink>
             {isAuthenticated && (
               <NavLink to="/builds" className={navLinkClass}>My Builds</NavLink>
             )}
