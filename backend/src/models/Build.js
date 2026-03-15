@@ -101,4 +101,9 @@ buildSchema.methods.softDelete = async function (userId) {
   return this.save()
 }
 
+// Ensure a per-user unique index on (owner, name)
+// Note: creating this index may fail if duplicates already exist — run a dedupe/migration first.
+buildSchema.index({ owner: 1, name: 1 }, { unique: true })
+
 module.exports = mongoose.model('Build', buildSchema)
+

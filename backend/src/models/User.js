@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema(
     },
     isActive: { type: Boolean, default: true },
     lastLogin: Date,
+    // Fn 4.2 — Soft delete tracking
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: Date,
   },
   { timestamps: true }
 )

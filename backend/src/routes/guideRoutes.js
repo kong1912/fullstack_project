@@ -7,6 +7,8 @@ const {
 
 // Public read
 router.get('/',    getGuides)
+// Dedicated search endpoint matching Function 4.4 checklist
+router.get('/search', require('../controllers/guideController').searchGuides)
 router.get('/:id', getGuide)
 
 // Auth required for write

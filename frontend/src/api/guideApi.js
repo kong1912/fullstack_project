@@ -1,6 +1,7 @@
 import axiosInstance from './axiosInstance'
 
-export const fetchGuides      = (params = {}) => axiosInstance.get('/guides', { params })
+// Use the search endpoint which supports tags + pagination. Keep params compatible.
+export const fetchGuides      = (params = {}) => axiosInstance.get('/guides/search', { params })
 export const fetchGuide       = (id)          => axiosInstance.get(`/guides/${id}`)
 export const createGuide      = (data)        => axiosInstance.post('/guides', data)
 export const updateGuide      = (id, data)    => axiosInstance.put(`/guides/${id}`, data)
