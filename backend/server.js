@@ -43,6 +43,15 @@ app.use('/api/comments',  require('./src/routes/commentRoutes'))
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }))
 
+// Fn 3.1 — Identity Scanner: reads req.query.token, returns 200/401 JSON
+app.get('/scan', (req, res) => {
+  const userToken = req.query.token
+  if (userToken === 'admin') {
+    return res.status(200).json({ status: 'authorized', clearance: 'high' })
+  }
+  return res.status(401).json({ status: 'unauthorized', clearance: 'none' })
+})
+
 // ── Error handler (must be last) ───────────────────────────────────────────────
 app.use(errorHandler)
 
