@@ -4,13 +4,14 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         mhw: {
-          dark:   '#1a1a2e',
-          panel:  '#16213e',
-          card:   '#0f3460',
+          dark:   'rgb(var(--mhw-dark) / <alpha-value>)',
+          panel:  'rgb(var(--mhw-panel) / <alpha-value>)',
+          card:   'rgb(var(--mhw-card) / <alpha-value>)',
           accent: '#e94560',
           gold:   '#f5a623',
           green:  '#4ade80',
