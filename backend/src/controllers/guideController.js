@@ -93,4 +93,17 @@ const voteGuide = asyncHandler(async (req, res) => {
   res.json({ success: true, upvotes: guide.upvotes, downvotes: guide.downvotes, userVote })
 })
 
-module.exports = { getGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide }
+// POST /api/guides/:id/images — upload 1-5 images, append to guide.images
+const uploadGuideImages = asyncHandler(async (req, res) => {
+  const guide = await Guide.findOne({ _id: req.params.id, author: req.user._id })
+  if (!guide) { res.statusCode = 404; throw new Error('Guide not found or not yours') }
+  if (!req.files?.length) { res.statusCode = 400; throw new Error('No files uploaded') }
+
+  // Convert each uploaded file buffer to a base64 data URL and store in MongoDB
+  const dataUrls = req.files.map(f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`)
+  guide.images.push(...dataUrls)
+  await guide.save()
+  res.json({ success: true, newImages: dataUrls, images: guide.images })
+})
+
+module.exports = { getGuides, getGuide, createGuide, updateGuide, deleteGuide, voteGuide, uploadGuideImages }

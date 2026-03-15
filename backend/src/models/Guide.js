@@ -16,6 +16,7 @@ const guideSchema = new mongoose.Schema(
       trim: true, minlength: 10,
     },
     tags: { type: [String], default: [] },
+    images: { type: [String], default: [] },  // stored filenames served from /uploads/
     upvotes:   { type: Number, default: 0 },
     downvotes: { type: Number, default: 0 },
     // track who voted so one user = one vote

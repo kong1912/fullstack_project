@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchGuide, voteGuide, deleteGuide, updateGuide } from '../api/guideApi'
 import CommentSection from '../components/guides/CommentSection'
+import ImageUploadQueue from '../components/guides/ImageUploadQueue'
 import LoadingSpinner from '../components/common/LoadingSpinner'
+
+// Images are stored as base64 data URLs in MongoDB — no URL construction needed
 
 function VotePanel({ guide, onVoted }) {
   const { user, isAuthenticated } = useAuth()
@@ -57,9 +60,13 @@ export default function GuideDetail() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
   const [editing, setEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState('')
-  const [editBody,  setEditBody]  = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [editTitle,  setEditTitle]  = useState('')
+  const [editBody,   setEditBody]   = useState('')
+  const [editFiles,  setEditFiles]  = useState([])
+  const [saving,     setSaving]     = useState(false)
+  // editPhase: 'editing' while in form, 'uploading' while ImageUploadQueue runs
+  const [editPhase,  setEditPhase]  = useState('editing')
+  const [savedGuide, setSavedGuide] = useState(null)
 
   useEffect(() => {
     setLoading(true)
@@ -83,11 +90,25 @@ export default function GuideDetail() {
     setSaving(true)
     try {
       const { data } = await updateGuide(id, { title: editTitle, body: editBody })
-      setGuide(data.guide)
-      setEditing(false)
+      if (editFiles.length > 0) {
+        // Hand off to ImageUploadQueue — don't close edit mode yet
+        setSavedGuide(data.guide)
+        setEditPhase('uploading')
+      } else {
+        setGuide(data.guide)
+        setEditing(false)
+      }
     } catch (e) {
       setError(e.response?.data?.message ?? 'Save failed.')
     } finally { setSaving(false) }
+  }
+
+  const handleEditUploadsComplete = (allImages) => {
+    setGuide({ ...savedGuide, images: allImages })
+    setEditFiles([])
+    setSavedGuide(null)
+    setEditPhase('editing')
+    setEditing(false)
   }
 
   const handleDelete = async () => {
@@ -117,20 +138,59 @@ export default function GuideDetail() {
 
       {/* Guide body */}
       <div className="bg-mhw-panel border border-white/10 rounded-2xl p-6 space-y-4">
-        {editing ? (
+        {editing && editPhase === 'uploading' && savedGuide ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-mhw-gold">Uploading New Images…</h3>
+              <span className="text-xs text-gray-500">{editFiles.length} file{editFiles.length !== 1 ? 's' : ''}</span>
+            </div>
+            <ImageUploadQueue
+              guideId={id}
+              files={editFiles}
+              onAllDone={handleEditUploadsComplete}
+            />
+          </div>
+        ) : editing ? (
           <div className="space-y-3">
             <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
               className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-mhw-accent" />
             <textarea value={editBody} onChange={e => setEditBody(e.target.value)}
               rows={10}
               className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm resize-y focus:outline-none focus:border-mhw-accent" />
+
+            {/* Existing images in edit mode */}
+            {guide.images?.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs text-gray-400 font-medium">Current images</p>
+                <div className="flex flex-wrap gap-2">
+                  {guide.images.map((img, i) => (
+                    <img key={i} src={img}
+                      alt={`guide image ${i + 1}`} className="h-20 w-28 object-cover rounded-lg border border-white/10" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add more images */}
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 font-medium">Add images (up to 5)</label>
+              <input type="file" multiple accept="image/*"
+                onChange={e => setEditFiles(Array.from(e.target.files).slice(0, 5))}
+                className="block w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-mhw-accent/80 file:text-white hover:file:bg-mhw-accent cursor-pointer" />
+              {editFiles.length > 0 && (
+                <ul className="text-xs text-gray-500 space-y-0.5 pl-1">
+                  {editFiles.map(f => <li key={f.name}>• {f.name}</li>)}
+                </ul>
+              )}
+            </div>
+
             {error && <p className="text-xs text-mhw-accent">{error}</p>}
             <div className="flex gap-2">
               <button onClick={saveEdit} disabled={saving}
                 className="px-4 py-1.5 bg-mhw-gold text-mhw-dark rounded-lg text-sm font-bold disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save'}
               </button>
-              <button onClick={() => setEditing(false)}
+              <button onClick={() => { setEditing(false); setEditPhase('editing') }}
                 className="px-4 py-1.5 bg-white/10 text-white rounded-lg text-sm">Cancel</button>
             </div>
           </div>
@@ -162,6 +222,17 @@ export default function GuideDetail() {
             <div className="prose prose-invert max-w-none text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
               {guide.body}
             </div>
+
+            {/* Image gallery */}
+            {guide.images?.length > 0 && (
+              <div className="flex flex-wrap gap-3 pt-2">
+                {guide.images.map((img, i) => (
+                  <img key={i} src={img}
+                    alt={`guide image ${i + 1}`}
+                    className="rounded-xl object-cover border border-white/10 max-h-64 max-w-full" />
+                ))}
+              </div>
+            )}
           </>
         )}
 
