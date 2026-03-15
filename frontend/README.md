@@ -1,3 +1,23 @@
+# MHW Hunter's Compendium — Final Project
+
+## Student Info
+
+| Field | Detail |
+|-------|--------|
+| **Project** | MHW Hunter's Compendium |
+| **Stack** | React 19 + Vite 7, Node.js/Express, MongoDB Atlas |
+| **Course** | Full-Stack Web Development |
+
+## Features
+
+- Monster Compendium with async search & filter (Fn 1.2)
+- Dynamic Routing & Detail Pages (Fn 2.2)
+- Build Wizard with multi-step form (Fn 3)
+- Guide / Blog system with recursive comments (Fn 1.4)
+- JWT auth via HttpOnly cookies
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
