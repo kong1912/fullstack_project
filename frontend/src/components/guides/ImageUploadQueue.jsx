@@ -36,10 +36,6 @@ function FileIcon({ name }) {
   return <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>.{ext}</span>
 }
 
-// Props:
-//   guideId   — string, the guide to upload to
-//   files     — File[], the images to process
-//   onAllDone — (allImages: string[]) => void, called when every file is done
 export default function ImageUploadQueue({ guideId, files, onAllDone }) {
   const [tasks, setTasks] = useState(() =>
     files.map((f, i) => ({ id: i, file: f, status: 'waiting', progress: 0 }))
