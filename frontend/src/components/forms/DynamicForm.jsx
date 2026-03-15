@@ -11,24 +11,57 @@ function buildZodSchema(fields) {
   for (const field of fields) {
     if (field.type === 'group' && field.fields) {
       shape[field.name] = buildZodSchema(field.fields) // recursive
-    } else {
-      let schema = z.string()
-      if (field.required)              schema = schema.min(1, `${field.label} is required`)
-      if (field.minLength)             schema = schema.min(field.minLength, `Min ${field.minLength} chars`)
-      if (field.maxLength)             schema = schema.max(field.maxLength, `Max ${field.maxLength} chars`)
-      if (field.pattern)               schema = schema.regex(new RegExp(field.pattern), field.patternMessage ?? 'Invalid format')
-      if (field.type === 'number')     schema = z.coerce.number().optional()
-      if (!field.required)             schema = schema.optional()
-      shape[field.name] = schema
-    }
+      } else {
+        // default to string schema
+        let schema = z.string()
+
+        // Prefer validation rules object when present (follow Function 6.5 instruction)
+        const vr = field.validation_rules ?? {}
+
+        // numeric fields: coerce and apply numeric min/max
+        if (field.type === 'number') {
+          schema = z.coerce.number()
+          // If the field is conditionally displayed (show_if), treat as optional
+          if (field.show_if || !('required' in vr ? vr.required : field.required)) schema = schema.optional()
+          if (typeof vr.min === 'number') schema = schema.min(vr.min, `Min ${vr.min}`)
+          if (typeof vr.max === 'number') schema = schema.max(vr.max, `Max ${vr.max}`)
+          shape[field.name] = schema
+          continue
+        }
+
+        // string rules (read from validation_rules when present)
+        // If the field is conditionally displayed (show_if), treat it as not required
+        const required = field.show_if ? false : ('required' in vr ? vr.required : field.required)
+        const minLength = 'minLength' in vr ? vr.minLength : field.minLength
+        const maxLength = 'maxLength' in vr ? vr.maxLength : field.maxLength
+        const pattern = 'pattern' in vr ? vr.pattern : field.pattern
+        const patternMessage = 'patternMessage' in vr ? vr.patternMessage : field.patternMessage
+
+        if (required)              schema = schema.min(1, `${field.label} is required`)
+        if (typeof minLength === 'number')             schema = schema.min(minLength, `Min ${minLength} chars`)
+        if (typeof maxLength === 'number')             schema = schema.max(maxLength, `Max ${maxLength} chars`)
+        if (pattern)               schema = schema.regex(new RegExp(pattern), patternMessage ?? 'Invalid format')
+        if (!required)             schema = schema.optional()
+        shape[field.name] = schema
+      }
   }
   return z.object(shape)
 }
 
 // ---- Recursive field renderer (Fn 6.5) ----
-function FieldRenderer({ field, register, errors, depth = 0 }) {
+function FieldRenderer({ field, register, errors, depth = 0, watch }) {
   const indent = { marginLeft: `${depth * 12}px` }
 
+  // Conditional display support: show_if: { field: 'role', equals: 'admin' }
+  if (field.show_if && typeof field.show_if === 'object' && typeof watch === 'function') {
+    const target = watch(field.show_if.field)
+    if (field.show_if.equals !== undefined && target !== field.show_if.equals) {
+      return null
+    }
+    if (field.show_if.notEquals !== undefined && target === field.show_if.notEquals) {
+      return null
+    }
+  }
   if (field.type === 'group') {
     return (
       <div style={indent} className="space-y-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3">
@@ -41,6 +74,7 @@ function FieldRenderer({ field, register, errors, depth = 0 }) {
             field={{ ...child, name: `${field.name}.${child.name}` }}
             register={register}
             errors={errors}
+            watch={watch}
             depth={depth + 1}
           />
         ))}
@@ -84,18 +118,30 @@ function FieldRenderer({ field, register, errors, depth = 0 }) {
  * @param {string}   [title]
  */
 export default function DynamicForm({ schema = [], onSubmit, title }) {
-  const zodSchema = useMemo(() => buildZodSchema(schema), [schema])
+  const zodSchema = useMemo(() => {
+    const s = buildZodSchema(schema)
+    // expose for testing/debug: log dynamic schema whenever it changes
+    // eslint-disable-next-line no-console
+    console.log('dynamicSchema', s)
+    return s
+  }, [schema])
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm({
     resolver: zodResolver(zodSchema),
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5 space-y-4">
+    <form onSubmit={handleSubmit(onSubmit, (errs) => { console.log('validationErrors', errs) })} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-5 space-y-4">
       {title && <h3 className="font-bold text-mhw-gold">{title}</h3>}
 
+      {Object.keys(errors || {}).length > 0 && (
+        <div className="text-xs text-mhw-accent">
+          Please fix {Object.keys(errors).length} validation error(s). Check the fields below.
+        </div>
+      )}
+
       {schema.map((field) => (
-        <FieldRenderer key={field.name} field={field} register={register} errors={errors} />
+        <FieldRenderer key={field.name} field={field} register={register} errors={errors} watch={watch} />
       ))}
 
       <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-mhw-accent hover:bg-red-600 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full">

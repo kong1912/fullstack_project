@@ -1,0 +1,30 @@
+[
+  {
+    "name": "title",
+    "label": "Title",
+    "type": "text",
+    "validation_rules": { "required": true, "minLength": 5 }
+  },
+  {
+    "name": "body",
+    "label": "content",
+    "type": "textarea",
+    "validation_rules": { "required": true, "minLength": 20 }
+  },
+  {
+    "name": "meta",
+    "label": "Metadata",
+    "type": "group",
+    "fields": [
+      { "name": "tags", "label": "Tags", "type": "text" },
+        { "name": "visibility", "label": "Visibility", "type": "select", "options": [{"value":"public","label":"Public"},{"value":"private","label":"Private"}] }
+    ]
+  },
+  {
+    "name": "admin_code",
+    "label": "Admin Code",
+    "type": "text",
+    "validation_rules": { "required": true },
+    "show_if": { "field": "meta.visibility", "equals": "private" }
+  }
+]

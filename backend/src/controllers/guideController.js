@@ -39,6 +39,12 @@ const searchGuides = asyncHandler(async (req, res) => {
     if (tags.length > 0) query.tags = { $all: tags }
   }
 
+  // Support free-text search (title or body) for server-side search
+  if (req.query.search) {
+    const re = new RegExp(req.query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    query.$or = query.$or ? [...query.$or, { title: re }, { body: re }] : [{ title: re }, { body: re }]
+  }
+
   const [guides, total] = await Promise.all([
     Guide.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
          .populate('author', 'username'),

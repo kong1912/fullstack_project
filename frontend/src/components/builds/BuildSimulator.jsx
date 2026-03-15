@@ -43,7 +43,7 @@ export default function BuildSimulator() {
           <button onClick={resetDraft} className="px-4 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all duration-200 border border-white/20 text-xs">Reset</button>
           <button onClick={saveBuild} disabled={isLoading || !draft.name}
             className="px-4 py-1 bg-mhw-accent hover:bg-red-600 text-white rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs">
-            {isLoading ? 'Saving…' : 'Save Build'}
+            Save Build
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/common/Navbar'
 import Footer from './components/common/Footer'
 import ProtectedRoute from './components/common/ProtectedRoute'
+import ToastContainer from './components/common/ToastContainer'
 
 import Home         from './pages/Home'
 import Monsters     from './pages/Monsters'
@@ -63,6 +64,7 @@ function App() {
             </Routes>
           </main>
             <Footer />
+            <ToastContainer />
           </div>
         </Router>
       </AuthProvider>

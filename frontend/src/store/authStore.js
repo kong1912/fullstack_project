@@ -5,7 +5,8 @@ import axiosInstance from '../api/axiosInstance'
 const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  // Start as loading so initial render doesn't redirect before session check completes
+  isLoading: true,
   error: null,
 
   // Login — receives JWT via HttpOnly cookie (Fn 5.3)

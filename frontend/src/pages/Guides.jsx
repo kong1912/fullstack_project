@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { fetchGuides } from '../api/guideApi'
 import GuideCard from '../components/guides/GuideCard'
 import GuideForm from '../components/guides/GuideForm'
 import LoadingSpinner from '../components/common/LoadingSpinner'
+import useDebounce from '../hooks/useDebounce'
 
 export default function Guides() {
   const { isAuthenticated } = useAuth()
@@ -12,14 +13,19 @@ export default function Guides() {
   const [page,    setPage]    = useState(1)
   const [loading, setLoading] = useState(false)
   const [searchInput, setSearchInput] = useState('')
-  const [search,      setSearch]      = useState('')
+  const debouncedSearch = useDebounce(searchInput, 600)
+  const abortCtrlRef = useRef(null)
 
-  const load = useCallback(async (p = 1, q = search) => {
+  const load = useCallback(async (p = 1, q = '') => {
     setLoading(true)
+    // cancel previous in-flight request
+    if (abortCtrlRef.current) abortCtrlRef.current.abort()
+    const ac = new AbortController()
+    abortCtrlRef.current = ac
     try {
       const params = { page: p, limit: 10 }
-      if (q.trim()) params.search = q.trim()
-      const res = await fetchGuides(params)
+      if (q?.trim()) params.search = q.trim()
+      const res = await fetchGuides(params, { signal: ac.signal })
       // normalize response: new endpoint returns { data: [...], metadata: { totalItems,... } }
       const payload = res.data || {}
       const items = payload.data ?? payload.guides ?? []
@@ -27,15 +33,21 @@ export default function Guides() {
       setGuides(prev => p === 1 ? items : [...prev, ...items])
       setTotal(totalItems)
       setPage(p)
-    } finally { setLoading(false) }
-  }, [search])
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') {
+        // request was cancelled - ignore
+      } else {
+        console.error('Guide load error', err)
+      }
+    } finally { setLoading(false); abortCtrlRef.current = null }
+  }, [])
 
-  useEffect(() => { load(1) }, [load])
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    setSearch(searchInput.trim())
-  }
+  // Trigger server-side search when debounced input changes
+  useEffect(() => {
+    load(1, debouncedSearch)
+    // cancel when unmounting
+    return () => { if (abortCtrlRef.current) abortCtrlRef.current.abort() }
+  }, [debouncedSearch, load])
 
   const handleCreated = (guide) => {
     setGuides(prev => [guide, ...prev])
@@ -59,7 +71,7 @@ export default function Guides() {
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2">
+      <form onSubmit={(e) => e.preventDefault()} className="flex gap-2">
         <div className="relative flex-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
@@ -69,17 +81,17 @@ export default function Guides() {
         <button className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition-colors border border-white/20">
           Search
         </button>
-        {search && (
-          <button type="button" onClick={() => { setSearch(''); setSearchInput('') }}
+        {debouncedSearch && (
+          <button type="button" onClick={() => { setSearchInput(''); load(1, '') }}
             className="px-2 py-2 text-gray-400 hover:text-white text-sm transition-colors">
             ✕
           </button>
         )}
       </form>
 
-      {search && (
+      {debouncedSearch && (
         <div className="flex flex-wrap gap-1 items-center">
-          <span className="px-2 py-0.5 bg-mhw-gold/20 text-mhw-gold rounded-full text-xs">🔍 {search}</span>
+          <span className="px-2 py-0.5 bg-mhw-gold/20 text-mhw-gold rounded-full text-xs">🔍 {debouncedSearch}</span>
         </div>
       )}
 

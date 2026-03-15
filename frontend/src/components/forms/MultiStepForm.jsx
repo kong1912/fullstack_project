@@ -42,13 +42,15 @@ export const mapArmor = (a) => !a ? null : ({
 })
 
 // ─── Searchable combobox ─────────────────────────────────────────────────────
-function SearchableSelect({ items, value, onChange, placeholder, isLoading, onFirstOpen, renderStats, renderListStats }) {
+function SearchableSelect({ items, value, onChange, placeholder, isLoading, onFirstOpen, renderStats, renderListStats, fallbackItem }) {
   const [query, setQuery] = useState('')
   const [open,  setOpen]  = useState(false)
   const ref         = useRef(null)
   const firstOpened = useRef(false)
 
-  const selected = value != null ? (items.find(i => i.id === value) ?? null) : null
+  let selected = value != null ? (items.find(i => String(i.id) === String(value)) ?? null) : null
+  // If item not found in list but caller provided a fallback (from persisted draft), use it
+  if (!selected && fallbackItem && String(fallbackItem.id) === String(value)) selected = fallbackItem
 
   useEffect(() => {
     const fn = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
@@ -362,21 +364,24 @@ function Step1() {
 
 // ─── Step 2: Weapon & Armor ───────────────────────────────────────────────────
 function Step2() {
-  const { data, nextStep, prevStep } = useMultiStep()
+  const { data, nextStep, prevStep, updateData } = useMultiStep()
 
-  const [weaponType,     setWeaponType]     = useState('great-sword')
-  const [weapons,        setWeapons]        = useState([])
+  // Initialize from persisted multi-step data when available
+  const [weaponType,     setWeaponType]     = useState(() => data.weapon?.weaponType || 'great-sword')
+  const [weapons,        setWeapons]        = useState(() => [])
   const [weaponsLoading, setWeaponsLoading] = useState(false)
   const [weaponId,       setWeaponId]       = useState(data.weaponId > 0 ? data.weaponId : null)
 
-  const [armorBySlot,  setArmorBySlot]  = useState({})
+  const [armorBySlot,  setArmorBySlot]  = useState(() => ({}))
   const [armorLoading, setArmorLoading] = useState(() =>
     Object.fromEntries(ARMOR_SLOTS.map(s => [s, true]))
   )
 
-  const [armorIds, setArmorIds] = useState({
-    head: null, chest: null, gloves: null, waist: null, legs: null,
-  })
+  // Restore selected armor ids from persisted multi-step data so refresh preserves selection
+  const [armorIds, setArmorIds] = useState(() => ({
+    head: data.helmId ?? null, chest: data.chestId ?? null, gloves: data.glovesId ?? null,
+    waist: data.waistId ?? null, legs: data.legsId ?? null,
+  }))
   const [gearError, setGearError] = useState(null)
 
   // Init progress
@@ -386,22 +391,101 @@ function Step2() {
   const initReady = initCount >= INIT_TOTAL
   const isFirstWeaponLoad = useRef(true)
 
-  // Load everything in parallel on mount
+  // Load everything in parallel on mount. Use a simple localStorage cache to avoid refetch on refresh.
   useEffect(() => {
     let cancelled = false
-    const done = (msg) => {
-      if (!cancelled) { setInitCount(c => c + 1); setInitStatus(msg) }
+    const done = (msg) => { if (!cancelled) { setInitCount(c => c + 1); setInitStatus(msg) } }
+
+    const CACHE_KEY = 'mhw-gear-cache'
+    const now = Date.now()
+    let cache = null
+    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') } catch { cache = null }
+
+    // If user already has persisted selections in multi-step `data`, restore them and skip fetching
+    const hasPersistedSelection = !!(data.weapon || data.weaponId || data.helm || data.helmId || data.chest || data.chestId || data.gloves || data.glovesId || data.waist || data.waistId || data.legs || data.legsId)
+    if (hasPersistedSelection) {
+      // Restore a minimal weapons list so selected weapon shows without fetching
+      if (data.weapon || data.weaponId) {
+        const wId = data.weapon?.mhwId ?? data.weaponId
+        setWeapons([{ id: wId, name: data.weapon?.name ?? data.weaponName ?? 'Selected weapon', type: data.weapon?.weaponType ?? data.weapon?.type }])
+        // ensure local state reflects persisted selection
+        setWeaponId(wId)
+        if (data.weapon?.weaponType) setWeaponType(data.weapon.weaponType)
+      }
+      // Restore armor lists per-slot containing the selected piece so selection shows
+      const restored = {}
+      const restoredLoading = {}
+      ARMOR_SLOTS.forEach(slot => {
+        const fieldKey = slot === 'head' ? 'helm' : slot // data uses helm for head
+        const obj = data[fieldKey]
+        const idKey = fieldKey + 'Id'
+        const id = obj?.mhwId ?? data[idKey]
+        if (id) restored[slot] = [{ id, name: obj?.name ?? '' }]
+        restoredLoading[slot] = false
+      })
+      setArmorBySlot(prev => ({ ...prev, ...restored }))
+      setArmorLoading(restoredLoading)
+      setWeaponsLoading(false)
+      setInitCount(INIT_TOTAL)
+      setInitStatus('Loaded from draft')
+      return () => { cancelled = true }
     }
 
-    setWeaponsLoading(true)
-    fetchWeapons({ q: JSON.stringify({ type: 'great-sword' }) })
-      .then(({ data: d }) => { if (!cancelled) setWeapons(d) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setWeaponsLoading(false); done('Weapons loaded') })
+    // If cache exists and is recent (10 minutes), use it
+    const CACHE_TTL = 10 * 60 * 1000
+    if (cache && (now - (cache.ts || 0)) < CACHE_TTL) {
+      // weapon list for the current weaponType
+      if (cache.weapons?.[weaponType]) {
+        setWeapons(cache.weapons[weaponType])
+        done('Weapons loaded (cached)')
+      }
+      // armor lists
+      if (cache.armorBySlot) {
+        setArmorBySlot(cache.armorBySlot)
+        // mark each slot as loaded
+        setArmorLoading(Object.fromEntries(ARMOR_SLOTS.map(s => [s, !(cache.armorBySlot[s] && cache.armorBySlot[s].length > 0)])))
+        ARMOR_SLOTS.forEach(slot => done(`${slot.charAt(0).toUpperCase() + slot.slice(1)} armor loaded (cached)`))
+      }
+    }
 
+    // Fetch weapons if not present in cache
+    if (!cache || !cache.weapons || !cache.weapons[weaponType]) {
+      setWeaponsLoading(true)
+      fetchWeapons({ q: JSON.stringify({ type: weaponType }) })
+        .then(({ data: d }) => {
+          if (!cancelled) setWeapons(d)
+          // persist to cache
+          try {
+            const cur = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+            cur.ts = Date.now()
+            cur.weapons = cur.weapons || {}
+            cur.weapons[weaponType] = d
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cur))
+          } catch {}
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setWeaponsLoading(false); done('Weapons loaded') })
+    }
+
+    // Fetch armor per slot if not cached
     ARMOR_SLOTS.forEach(slot => {
+      const cachedSlot = cache?.armorBySlot?.[slot]
+      if (cachedSlot && cachedSlot.length > 0) {
+        // already handled above
+        return
+      }
       fetchArmor({ q: JSON.stringify({ type: slot }) })
-        .then(({ data: d }) => { if (!cancelled) setArmorBySlot(prev => ({ ...prev, [slot]: d })) })
+        .then(({ data: d }) => {
+          if (!cancelled) setArmorBySlot(prev => ({ ...prev, [slot]: d }))
+          // persist
+          try {
+            const cur = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+            cur.ts = Date.now()
+            cur.armorBySlot = cur.armorBySlot || {}
+            cur.armorBySlot[slot] = d
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cur))
+          } catch {}
+        })
         .catch(() => {})
         .finally(() => {
           if (!cancelled) {
@@ -410,6 +494,7 @@ function Step2() {
           }
         })
     })
+
     return () => { cancelled = true }
   }, [])
 
@@ -429,11 +514,32 @@ function Step2() {
   const handleWeaponChange = useCallback((id) => {
     setWeaponId(id)
     if (id) setGearError(null)
-  }, [])
+    const sel = weapons.find(w => w.id === id) ?? null
+    // persist selection immediately so refresh can restore without refetch
+    updateData({
+      weaponId: id ?? null,
+      weaponName: sel?.name ?? '',
+      weapon: sel ? mapWeapon(sel) : null,
+    })
+    // also persist into a small gear cache so the selection appears in cached lists
+    try {
+      const CACHE_KEY = 'mhw-gear-cache'
+      const cur = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+      cur.ts = Date.now()
+      cur.weapons = cur.weapons || {}
+      cur.weapons[weaponType] = cur.weapons[weaponType] || []
+      // ensure selected weapon is present in the cached list
+      if (sel) {
+        const exists = cur.weapons[weaponType].some(w => String(w.id) === String(sel.id))
+        if (!exists) cur.weapons[weaponType].unshift(sel)
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cur))
+      }
+    } catch (_) {}
+  }, [weapons, updateData])
 
-  const selectedWeapon      = weapons.find(w => w.id === weaponId) ?? null
+  const selectedWeapon      = weapons.find(w => String(w.id) === String(weaponId)) ?? null
   const selectedArmorPieces  = ARMOR_SLOTS.map(slot =>
-    (armorBySlot[slot] || []).find(a => a.id === armorIds[slot]) ?? null
+    (armorBySlot[slot] || []).find(a => String(a.id) === String(armorIds[slot])) ?? null
   )
 
   const handleSubmit = async (e) => {
@@ -496,15 +602,31 @@ function Step2() {
             </button>
           ))}
         </div>
-        <SearchableSelect
-          items={weapons}
-          value={weaponId}
-          onChange={handleWeaponChange}
-          placeholder="Search weapon by name…"
-          isLoading={weaponsLoading}
-          renderListStats={w => <WeaponListStats item={w} />}
-          renderStats={w => <WeaponStats weapon={w} />}
-        />
+        {
+          // If weapons list doesn't include the persisted selection, show a simple selected chip (like armor) so user sees their choice
+          (!weapons.some(w => String(w.id) === String(weaponId)) && data.weaponName && weaponId)
+            ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-mhw-accent/40 rounded-lg">
+                  <span className="flex-1 text-sm text-white truncate">{data.weaponName}</span>
+                  <button type="button" onClick={() => handleWeaponChange(null)}
+                    className="shrink-0 text-xs text-gray-400 hover:text-white px-1">✕ change</button>
+                </div>
+                {data.weapon && <WeaponStats weapon={data.weapon} />}
+              </div>
+            ) : (
+              <SearchableSelect
+                items={weapons}
+                value={weaponId}
+                onChange={handleWeaponChange}
+                placeholder="Search weapon by name…"
+                isLoading={weaponsLoading}
+                fallbackItem={data.weapon ? { id: data.weapon.mhwId ?? data.weapon.mhwId, name: data.weapon.name } : null}
+                renderListStats={w => <WeaponListStats item={w} />}
+                renderStats={w => <WeaponStats weapon={w} />}
+              />
+            )
+        }
         {gearError && <p className="text-xs text-mhw-accent">{gearError}</p>}
       </section>
 
@@ -519,7 +641,12 @@ function Step2() {
             <SearchableSelect
               items={armorBySlot[slot] || []}
               value={armorIds[slot]}
-              onChange={id => setArmorIds(prev => ({ ...prev, [slot]: id }))}
+              onChange={(id) => {
+                setArmorIds(prev => ({ ...prev, [slot]: id }))
+                const selected = (armorBySlot[slot] || []).find(a => a.id === id) ?? null
+                const fieldKey = slot === 'head' ? 'helm' : slot
+                updateData({ [fieldKey + 'Id']: id ?? null, [fieldKey]: selected ? mapArmor(selected) : null })
+              }}
               placeholder={`Search ${slot} armor…`}
               isLoading={!!armorLoading[slot]}
               renderListStats={a => <ArmorListStats item={a} />}
