@@ -1,10 +1,12 @@
 // Fn 2.1 — Navbar with Context API (React Router + Tailwind CSS)
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import useNetworkStatus from '../../hooks/useNetworkStatus'
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const { isOnline, pendingSync } = useNetworkStatus()
   const navigate = useNavigate()
 
@@ -21,7 +23,7 @@ export default function Navbar() {
     }`
 
   return (
-    <nav className="bg-white/5 backdrop-blur-md border border-white/10 rounded-none border-x-0 border-t-0 sticky top-0 z-50 w-full">
+    <nav className="bg-mhw-panel/80 backdrop-blur-md border-b border-white/10 sticky top-0 z-50 w-full transition-colors duration-300">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -44,6 +46,14 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 flex items-center justify-center rounded-lg dark:bg-white/10 bg-gray-200 dark:hover:bg-white/20 hover:bg-gray-300 transition-colors text-base">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
             {/* Network status indicator (Fn 7.4) */}
             <div className={`flex items-center gap-1 text-xs ${isOnline ? 'text-mhw-green' : 'text-yellow-400'}`}>
               <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-mhw-green' : 'bg-yellow-400'}`} />
