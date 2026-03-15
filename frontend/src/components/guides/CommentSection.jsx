@@ -22,8 +22,19 @@ function VoteButtons({ upvotes, downvotes, userVote, onVote, small }) {
   )
 }
 
-// ── Single comment (recursive) ────────────────────────────────────────────────
-function CommentItem({ comment: init, targetType, targetId, depth = 0 }) {
+// ── Recursive deep-update helper ─────────────────────────────────────────────
+// Walks the nested comment tree and returns a new tree with the target comment
+// updated by the provided updater function. Preserves immutability at every level.
+function updateComments(comments, targetId, updater) {
+  return comments.map(c => {
+    if (c._id === targetId) return updater(c)
+    if (c.replies?.length) return { ...c, replies: updateComments(c.replies, targetId, updater) }
+    return c
+  })
+}
+
+
+function CommentItem({ comment: init, targetType, targetId, depth = 0, onDeepUpdate }) {
   const { isAuthenticated, user } = useAuth()
   const [comment,    setComment]  = useState(init)
   const [replying,   setReplying] = useState(false)
@@ -45,13 +56,17 @@ function CommentItem({ comment: init, targetType, targetId, depth = 0 }) {
   const handleVote = async (vote) => {
     if (!isAuthenticated) return
     const { data } = await voteComment(comment._id, vote)
-    setComment(c => ({ ...c, upvotes: data.upvotes, downvotes: data.downvotes, _userVote: data.userVote }))
+    const updater = c => ({ ...c, upvotes: data.upvotes, downvotes: data.downvotes, _userVote: data.userVote })
+    setComment(updater)
+    onDeepUpdate?.(comment._id, updater)
   }
 
   const handleDelete = async () => {
     if (!window.confirm('Delete this comment?')) return
     await deleteComment(comment._id)
-    setComment(c => ({ ...c, isDeleted: true, body: '[deleted]' }))
+    const updater = c => ({ ...c, isDeleted: true, body: '[deleted]' })
+    setComment(updater)
+    onDeepUpdate?.(comment._id, updater)
   }
 
   const handleReply = async (e) => {
@@ -117,7 +132,7 @@ function CommentItem({ comment: init, targetType, targetId, depth = 0 }) {
       )}
 
       {showReplies && replies.map(r => (
-        <CommentItem key={r._id} comment={r} targetType={targetType} targetId={targetId} depth={depth + 1} />
+        <CommentItem key={r._id} comment={r} targetType={targetType} targetId={targetId} depth={depth + 1} onDeepUpdate={onDeepUpdate} />
       ))}
     </div>
   )
@@ -144,6 +159,12 @@ export default function CommentSection({ targetType, targetId }) {
   }, [targetType, targetId])
 
   useEffect(() => { load(1) }, [load])
+
+  // Expose updateComments so child CommentItems can propagate deep state changes
+  // upward into the root comments array without mutation.
+  const handleDeepUpdate = (commentId, updater) => {
+    setComments(prev => updateComments(prev, commentId, updater))
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -185,7 +206,7 @@ export default function CommentSection({ targetType, targetId }) {
 
       <div className="space-y-3">
         {comments.map(c => (
-          <CommentItem key={c._id} comment={c} targetType={targetType} targetId={targetId} />
+          <CommentItem key={c._id} comment={c} targetType={targetType} targetId={targetId} onDeepUpdate={handleDeepUpdate} />
         ))}
       </div>
 
