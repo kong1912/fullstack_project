@@ -19,11 +19,13 @@ const userSchema = new mongoose.Schema(
       select: false, // Fn 5.1 — prevent password leaking through API
     },
     roles: {
-      type: [String], enum: ['user', 'admin', 'moderator'],
+      type: [String], enum: ['user', 'admin', 'editor', 'manager'],
       default: ['user'],
     },
     isActive: { type: Boolean, default: true },
     lastLogin: Date,
+    // Fn 5.3 — track when password was last changed (ms since epoch)
+    passwordChangedAt: Date,
     // Fn 4.2 — Soft delete tracking
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: Date,
@@ -35,6 +37,10 @@ const userSchema = new mongoose.Schema(
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return
   this.password = await bcrypt.hash(this.password, 12)
+  // If password is changed (and not a new user), record the change timestamp
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date()
+  }
 })
 
 // Fn 5.2 — Safe password comparison method

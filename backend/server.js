@@ -45,6 +45,7 @@ app.use('/api/guides',    require('./src/routes/guideRoutes'))
 app.use('/api/comments',  require('./src/routes/commentRoutes'))
 app.use('/api/vault',     require('./src/routes/vaultRoutes'))
 app.use('/api/users',     require('./src/routes/userRoutes'))
+app.use('/api/test',      require('./src/routes/testRoutes'))
 
 // Fn 3.2 — Interactive real-time health monitoring (C1-C5)
 // GET /health — system metrics via Node.js built-in os/process modules

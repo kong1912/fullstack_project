@@ -34,6 +34,16 @@ const protect = asyncHandler(async (req, res, next) => {
     throw new Error('Account is deactivated')
   }
 
+  // 5. Fn 5.3 — Password change check: if user changed password after token was issued, invalidate token
+  // decoded.iat is in seconds, passwordChangedAt is Date in ms
+  if (user.passwordChangedAt) {
+    const pwdChangedSec = Math.floor(new Date(user.passwordChangedAt).getTime() / 1000)
+    if (decoded.iat < pwdChangedSec) {
+      res.statusCode = 401
+      throw new Error('Password changed after token was issued. Please log in again.')
+    }
+  }
+
   req.user  = user
   req.token = token
   next()
