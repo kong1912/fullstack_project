@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/common/Navbar'
@@ -19,6 +19,10 @@ import Profile      from './pages/Profile'
 import NotFound     from './pages/NotFound'
 import Guides       from './pages/Guides'
 import GuideDetail  from './pages/GuideDetail'
+import BuildCreate  from './pages/BuildCreate'
+import BuildStep1   from './pages/BuildStep1'
+import BuildStep2   from './pages/BuildStep2'
+import BuildStep3   from './pages/BuildStep3'
 
 function App() {
   return (
@@ -42,6 +46,13 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/builds"      element={<Builds />} />
                 <Route path="/builds/:id" element={<BuildDetail />} />
+                {/* Fn 2.4 C1: Nested routes — <Outlet /> in BuildCreate, layout never re-mounts */}
+                <Route path="/builds/create" element={<BuildCreate />}>
+                  <Route index element={<Navigate to="step1" replace />} />
+                  <Route path="step1" element={<BuildStep1 />} />
+                  <Route path="step2" element={<BuildStep2 />} />
+                  <Route path="step3" element={<BuildStep3 />} />
+                </Route>
                 <Route path="/profile"     element={<Profile />} />
               </Route>
               {/* Admin only */}

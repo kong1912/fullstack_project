@@ -1,50 +1,27 @@
 // Fn 2.4 — Zustand persistence + Fn 6.3 Multi-step form
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import useBuildStore from '../store/buildStore'
 import BuildCard from '../components/builds/BuildCard'
-import { MultiStepProvider } from '../context/MultiStepFormContext'
-import MultiStepForm from '../components/forms/MultiStepForm'
 import LoadingSpinner from '../components/common/LoadingSpinner'
-import axiosInstance from '../api/axiosInstance'
 
 export default function Builds() {
   const { builds, fetchBuilds, isLoading } = useBuildStore()
-  const [saveError, setSaveError] = useState(null)
-  const [saving,    setSaving]    = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => { fetchBuilds() }, [fetchBuilds])
 
-  const handleMultiStepSubmit = async (data) => {
-    setSaveError(null)
-    setSaving(true)
-    try {
-      await axiosInstance.post('/builds', data)
-      fetchBuilds()
-    } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Failed to save build'
-      setSaveError(msg)
-      throw err   // re-throw so context does not reset the form
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      <h1 className="text-3xl font-extrabold text-mhw-gold">My Builds</h1>
-
-      {/* Build Wizard (Fn 6.3) */}
-      <div>
-        <h2 className="text-xl font-bold text-white mb-4">Build Wizard</h2>
-        <MultiStepProvider onSubmit={handleMultiStepSubmit}>
-          <MultiStepForm />
-        </MultiStepProvider>
-        {saving && (
-          <p className="text-sm text-mhw-gold animate-pulse mt-2">Saving build…</p>
-        )}
-        {saveError && (
-          <p className="text-sm text-red-400 mt-2">⚠ {saveError}</p>
-        )}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-extrabold text-mhw-gold">My Builds</h1>
+        {/* Navigate to nested-route wizard (Fn 2.4 C1) */}
+        <button
+          onClick={() => navigate('/builds/create/step1')}
+          className="px-5 py-2 bg-mhw-accent hover:bg-red-600 text-white rounded-lg font-semibold transition-all text-sm"
+        >
+          + Create Build
+        </button>
       </div>
 
       {/* Saved builds */}
